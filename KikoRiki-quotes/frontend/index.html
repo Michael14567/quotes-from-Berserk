@@ -4,14 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Цитаты Смешариков</title>
-  <link rel="stylesheet" href="/style.css">
-  <script src="/script.js?v=2" defer></script>
+  <link rel="stylesheet" href="/style.css?v=3">
+  <script src="/script.js?v=3" defer></script>
 </head>
 <body>
   <main class="terminal">
+    <div id="clouds" class="clouds" aria-hidden="true" hidden>
+      <pre class="cloud cloud-one">    .--.
+ .-(    ).
+(___.__)__)</pre>
+      <pre class="cloud cloud-two">      .--.
+   .-(    ).
+  (___.__)__)</pre>
+      <pre class="cloud cloud-three">    .--.
+ .-(    ).
+(___.__)__)</pre>
+    </div>
     <div class="output" aria-live="polite" aria-atomic="true"><span class="prompt" aria-hidden="true">&gt; </span><span id="quote"></span><span class="cursor" aria-hidden="true"></span></div>
     <div class="actions">
       <button id="next" type="button">Получить цитату <span aria-hidden="true">↵</span></button>
+      <button id="admire" type="button" aria-pressed="false">Любоваться облаками</button>
       <button id="telegram" type="button">Привязать Telegram</button>
       <div id="pairing" class="pairing" hidden>
         <img id="qr" alt="QR-код для привязки Telegram" width="200" height="200">

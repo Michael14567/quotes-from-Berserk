@@ -4,9 +4,17 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const telegramButton = document.querySelector('#telegram');
 const pairing = document.querySelector('#pairing');
 const pairingStatus = document.querySelector('#pairing-status');
+const admireButton = document.querySelector('#admire');
+const clouds = document.querySelector('#clouds');
 let linked = false;
 let pairingTimer = null;
 let lastId = null;
+
+admireButton.addEventListener('click', () => {
+  clouds.hidden = !clouds.hidden;
+  admireButton.setAttribute('aria-pressed', String(!clouds.hidden));
+  admireButton.textContent = clouds.hidden ? 'Любоваться облаками' : 'Остановить облака';
+});
 
 async function refreshTelegramStatus() {
   const response = await fetch('/api/telegram/status', { cache: 'no-store' });
