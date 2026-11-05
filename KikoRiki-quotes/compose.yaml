@@ -4,7 +4,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "8088:80"
+      - "127.0.0.1:8088:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./frontend:/usr/share/nginx/html:ro
@@ -13,12 +13,14 @@ services:
   app:
     build: ./backend/main
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      DATABASE_URL: postgresql://quotes:quotes@db:5432/quotes
+      DB_PASSWORD_FILE: /run/secrets/db_password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-KikoRiki_quotes_bot}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+    secrets:
+      - db_password
     depends_on:
       db:
         condition: service_healthy
@@ -101,7 +103,9 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      DATABASE_URL: postgresql://quotes:quotes@db:5432/quotes
+      DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
     depends_on:
       kafka:
         condition: service_started
@@ -115,7 +119,9 @@ services:
     command: ["python", "-u", "bot_listener.py"]
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      DATABASE_URL: postgresql://quotes:quotes@db:5432/quotes
+      DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
     depends_on:
       db:
         condition: service_healthy
@@ -124,7 +130,9 @@ services:
     environment:
       POSTGRES_DB: quotes
       POSTGRES_USER: quotes
-      POSTGRES_PASSWORD: quotes
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
     volumes:
       - quotes_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -140,3 +148,6 @@ volumes:
   kafka_data:
   kafka_data_2:
   kafka_data_3:
+secrets:
+  db_password:
+    file: ./.secrets/postgres_password

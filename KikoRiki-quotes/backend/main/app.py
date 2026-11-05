@@ -15,11 +15,11 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from psycopg.rows import dict_row
 import qrcode
 import qrcode.image.svg
+import database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("quotes")
 app = FastAPI(title="Цитатник Смешариков")
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://quotes:quotes@localhost:5432/quotes")
 KAFKA_BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 KAFKA_TOPIC = "quote-clicks"
 BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "KikoRiki_quotes_bot").lstrip("@")
@@ -37,11 +37,11 @@ producer_initialized = False
 
 def fetch_all(query: str, params: tuple = ()) -> list[dict]:
     try:
-        with psycopg.connect(DATABASE_URL, connect_timeout=3, row_factory=dict_row) as connection:
+        with database.connect(connect_timeout=3, row_factory=dict_row) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(query, params)
                 return cursor.fetchall()
-    except psycopg.Error:
+    except (psycopg.Error, OSError, ValueError):
         logger.exception("Ошибка обращения к базе данных")
         raise HTTPException(status_code=503, detail="База данных недоступна")
 
@@ -79,12 +79,15 @@ def create_telegram_link(request: Request, response: Response):
 
 
 @app.get("/telegram/status")
-def telegram_status(request: Request):
+def telegram_status(request: Request, response: Response):
     session = session_key(request)
     if not session:
         return {"linked": False}
     rows = fetch_all("SELECT chat_id IS NOT NULL AS linked FROM telegram_sessions WHERE session_hash = %s", (session,))
-    return {"linked": rows[0]["linked"] if rows else False}
+    linked = rows[0]["linked"] if rows else False
+    if linked and (COOKIE_SECURE or request.url.scheme == "https"):
+        response.set_cookie("quotes_session", request.cookies["quotes_session"], httponly=True, samesite="lax", secure=True, max_age=60 * 60 * 24 * 365)
+    return {"linked": linked}
 
 
 @app.delete("/telegram/link")

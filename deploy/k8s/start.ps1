@@ -19,6 +19,17 @@ if (-not (Test-Path $minikube)) {
     Move-Item -LiteralPath $download -Destination $minikube -Force
 }
 Run-Checked $minikube @('start', '-p', 'smeshariki', '--driver=docker', '--cpus=2', '--memory=4096')
+$passwordFile = Join-Path $projectRoot 'KikoRiki-quotes/.secrets/postgres_password'
+if (-not (Test-Path $passwordFile)) { throw 'Create the database secret first; see deploy/README.md.' }
+Run-Checked 'kubectl' @('apply', '-f', (Join-Path $projectRoot 'deploy/k8s/namespace.yaml'))
+$existingSecret = & kubectl -n smeshariki get secret postgres-auth -o name --ignore-not-found
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect PostgreSQL secret.' }
+if (-not $existingSecret) {
+    $existingPvc = & kubectl -n smeshariki get pvc postgres-data -o name --ignore-not-found
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect PostgreSQL volume.' }
+    if ($existingPvc) { throw 'Existing PostgreSQL volume has no postgres-auth secret. Migrate it first; see deploy/README.md.' }
+    Run-Checked 'kubectl' @('-n', 'smeshariki', 'create', 'secret', 'generic', 'postgres-auth', "--from-file=db_password=$passwordFile")
+}
 Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-app:local', (Join-Path $projectRoot 'KikoRiki-quotes/backend/main'))
 Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-notification:local', (Join-Path $projectRoot 'KikoRiki-quotes/backend/notification'))
 Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-frontend:local', (Join-Path $projectRoot 'KikoRiki-quotes/frontend'))

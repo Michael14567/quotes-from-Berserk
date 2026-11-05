@@ -9,7 +9,7 @@ test:
   script:
     - pip install -r KikoRiki-quotes/backend/main/requirements-test.txt
     - python -m pytest -q KikoRiki-quotes/backend/main/tests
-    - python -m compileall -q KikoRiki-quotes/backend/main/app.py KikoRiki-quotes/backend/notification/consumer.py KikoRiki-quotes/backend/notification/bot_listener.py
+    - python -m compileall -q KikoRiki-quotes/backend/main KikoRiki-quotes/backend/notification
 
 validate-ansible:
   stage: test

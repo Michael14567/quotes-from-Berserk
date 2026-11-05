@@ -66,3 +66,13 @@ def test_click_uses_only_current_browser_session(monkeypatch):
     event = json.loads(producer.produce.call_args.kwargs['value'])
     assert event['session_hash'] == app.token_hash(token)
     assert token not in json.dumps(event)
+
+
+def test_linked_session_cookie_is_upgraded_to_secure(monkeypatch):
+    monkeypatch.setattr(app, 'fetch_all', Mock(return_value=[{'linked': True}]))
+    monkeypatch.setattr(app, 'COOKIE_SECURE', True)
+    client = TestClient(app.app, base_url='https://localhost')
+    client.cookies.set('quotes_session', 'a' * 43)
+    response = client.get('/telegram/status')
+    assert response.json() == {'linked': True}
+    assert 'Secure' in response.headers['set-cookie']

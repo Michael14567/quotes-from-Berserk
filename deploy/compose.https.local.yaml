@@ -1,0 +1,17 @@
+services:
+  app:
+    environment:
+      SESSION_COOKIE_SECURE: "true"
+  caddy:
+    image: caddy:2.10.2-alpine
+    ports:
+      - "127.0.0.1:8443:443"
+    volumes:
+      - ../deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy_local_data:/data
+      - caddy_local_config:/config
+    depends_on:
+      - nginx
+volumes:
+  caddy_local_data:
+  caddy_local_config:

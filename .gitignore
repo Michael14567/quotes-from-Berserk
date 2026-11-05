@@ -14,6 +14,7 @@ __pycache__/
 .ssh/
 .aws/
 .kube/
+.secrets/
 **/kubeconfig
 credentials.json
 service-account*.json

@@ -8,11 +8,11 @@ import time
 from urllib import error, parse, request
 
 import psycopg
+import database
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("telegram-bot")
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://quotes:quotes@db:5432/quotes")
 START = re.compile(r"^/start(?:@\w+)? ([A-Za-z0-9_-]{32})$")
 
 
@@ -46,7 +46,7 @@ def main():
     log.info("Ожидаем команды привязки от Telegram")
     while True:
         try:
-            with psycopg.connect(DATABASE_URL, connect_timeout=5) as connection:
+            with database.connect(connect_timeout=5) as connection:
                 row = connection.execute("SELECT next_update_id FROM telegram_bot_state WHERE name = 'poller'").fetchone()
                 offset = row[0] if row else 0
                 connection.commit()

@@ -40,7 +40,7 @@ spec:
           env:
             - {name: POSTGRES_DB, value: quotes}
             - {name: POSTGRES_USER, value: quotes}
-            - {name: POSTGRES_PASSWORD, value: quotes}
+            - {name: POSTGRES_PASSWORD_FILE, value: /var/secrets/postgres/db_password}
           ports:
             - containerPort: 5432
           readinessProbe:
@@ -50,6 +50,7 @@ spec:
           volumeMounts:
             - {name: data, mountPath: /var/lib/postgresql/data}
             - {name: init, mountPath: /docker-entrypoint-initdb.d}
+            - {name: db-password, mountPath: /var/secrets/postgres, readOnly: true}
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -57,11 +58,15 @@ spec:
         - name: init
           configMap:
             name: postgres-init
+        - name: db-password
+          secret:
+            secretName: postgres-auth
+            defaultMode: 0400
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: telegram-schema
+  name: telegram-schema-secret-v2
 spec:
   backoffLimit: 6
   template:
@@ -71,13 +76,18 @@ spec:
         - name: migrate
           image: postgres:16
           env:
-            - {name: PGPASSWORD, value: quotes}
+            - {name: DB_PASSWORD_FILE, value: /var/secrets/postgres/db_password}
           command: ["/bin/sh", "-c"]
           args:
-            - 'until pg_isready -h db -U quotes -d quotes; do sleep 2; done; psql -h db -U quotes -d quotes -v ON_ERROR_STOP=1 -f /schema/03-telegram.sql'
+            - 'until pg_isready -h db -U quotes -d quotes; do sleep 2; done; export PGPASSWORD="$(cat "$DB_PASSWORD_FILE")"; exec psql -h db -U quotes -d quotes -v ON_ERROR_STOP=1 -f /schema/03-telegram.sql'
           volumeMounts:
             - {name: schema, mountPath: /schema}
+            - {name: db-password, mountPath: /var/secrets/postgres, readOnly: true}
       volumes:
         - name: schema
           configMap:
             name: postgres-init
+        - name: db-password
+          secret:
+            secretName: postgres-auth
+            defaultMode: 0400

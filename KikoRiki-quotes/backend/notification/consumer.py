@@ -9,6 +9,7 @@ from urllib import error, parse, request
 
 from confluent_kafka import Consumer, KafkaException
 import psycopg
+import database
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("notification")
@@ -41,7 +42,6 @@ def send_telegram(token, chat_id, event):
 
 def main():
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    database_url = os.environ.get("DATABASE_URL", "postgresql://quotes:quotes@db:5432/quotes")
     if not token:
         logger.error("Укажи TELEGRAM_BOT_TOKEN в .env; уведомления пока не отправляются")
         return 1
@@ -80,10 +80,10 @@ def main():
                 continue
             while running:
                 try:
-                    with psycopg.connect(database_url, connect_timeout=5) as connection:
+                    with database.connect(connect_timeout=5) as connection:
                         row = connection.execute("SELECT chat_id FROM telegram_sessions WHERE session_hash = %s", (session_hash,)).fetchone()
                     break
-                except psycopg.Error:
+                except (psycopg.Error, OSError, ValueError):
                     logger.warning("База недоступна; повторим проверку привязки")
                     time.sleep(5)
             if not running:
