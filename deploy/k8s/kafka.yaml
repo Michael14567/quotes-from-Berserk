@@ -57,7 +57,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: kafka-init
+  name: kafka-init-retention
 spec:
   backoffLimit: 6
   template:
@@ -70,4 +70,4 @@ spec:
           args:
             - |
               until rpk topic describe quote-clicks -X brokers=kafka-0.kafka:9092 >/dev/null 2>&1 || rpk topic create quote-clicks -r 3 -p 1 -X brokers=kafka-0.kafka:9092; do sleep 3; done
-              until rpk topic alter-config quote-clicks --set replication.factor=3 -X brokers=kafka-0.kafka:9092; do sleep 3; done
+              until rpk topic alter-config quote-clicks --set replication.factor=3 --set retention.ms=86400000 -X brokers=kafka-0.kafka:9092; do sleep 3; done

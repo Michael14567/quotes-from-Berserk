@@ -35,32 +35,32 @@
         path: "{{ project_dir }}/{{ item }}"
         state: directory
         mode: '0755'
-      loop: [berserk-quotes, berserk-quotes/frontend, berserk-quotes/notification, deploy]
+      loop: [KikoRiki-quotes, KikoRiki-quotes/frontend, KikoRiki-quotes/backend, KikoRiki-quotes/backend/main, KikoRiki-quotes/backend/notification, deploy]
     - name: Скопировать файлы Compose и инициализации
       ansible.builtin.copy:
         src: "{{ project_source }}/{{ item }}"
         dest: "{{ project_dir }}/{{ item }}"
         mode: '0644'
       loop:
-        - berserk-quotes/compose.yaml
-        - berserk-quotes/Dockerfile
-        - berserk-quotes/app.py
-        - berserk-quotes/requirements.txt
-        - berserk-quotes/notification/Dockerfile
-        - berserk-quotes/notification/consumer.py
-        - berserk-quotes/notification/bot_listener.py
-        - berserk-quotes/init.sql
-        - berserk-quotes/telegram.sql
-        - berserk-quotes/nginx.conf
-        - berserk-quotes/frontend/index.html
-        - berserk-quotes/frontend/style.css
-        - berserk-quotes/frontend/script.js
+        - KikoRiki-quotes/compose.yaml
+        - KikoRiki-quotes/backend/main/Dockerfile
+        - KikoRiki-quotes/backend/main/app.py
+        - KikoRiki-quotes/backend/main/requirements.txt
+        - KikoRiki-quotes/backend/notification/Dockerfile
+        - KikoRiki-quotes/backend/notification/consumer.py
+        - KikoRiki-quotes/backend/notification/bot_listener.py
+        - KikoRiki-quotes/init.sql
+        - KikoRiki-quotes/telegram.sql
+        - KikoRiki-quotes/nginx.conf
+        - KikoRiki-quotes/frontend/index.html
+        - KikoRiki-quotes/frontend/style.css
+        - KikoRiki-quotes/frontend/script.js
         - smeshariki_quotes.sql
         - deploy/compose.images.yaml
     - name: Записать секреты и адреса образов
       ansible.builtin.template:
         src: env.j2
-        dest: "{{ project_dir }}/berserk-quotes/.env"
+        dest: "{{ project_dir }}/KikoRiki-quotes/.env"
         mode: '0600'
       no_log: true
     - name: Войти в Registry на сервере
@@ -72,17 +72,17 @@
     - name: Скачать образы этой версии
       ansible.builtin.command:
         argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, pull]
-        chdir: "{{ project_dir }}/berserk-quotes"
+        chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: true
     - name: Запустить сервисы
       ansible.builtin.command:
         argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, up, -d, --no-build, --remove-orphans]
-        chdir: "{{ project_dir }}/berserk-quotes"
+        chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: true
     - name: Добавить таблицы привязки в существующую базу
       ansible.builtin.command:
         argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, exec, -T, db, psql, -v, ON_ERROR_STOP=1, -U, quotes, -d, quotes, -f, /docker-entrypoint-initdb.d/03-telegram.sql]
-        chdir: "{{ project_dir }}/berserk-quotes"
+        chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: false
     - name: Проверить API через Nginx
       ansible.builtin.uri:

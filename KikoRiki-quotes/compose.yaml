@@ -1,3 +1,5 @@
+# Сохраняем прежнее имя Compose, чтобы использовать существующие volumes.
+name: berserk-quotes
 services:
   nginx:
     image: nginx:alpine
@@ -9,7 +11,7 @@ services:
     depends_on:
       - app
   app:
-    build: .
+    build: ./backend/main
     ports:
       - "8000:8000"
     environment:
@@ -85,7 +87,7 @@ services:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - 'until rpk topic describe quote-clicks -X brokers=kafka:9092 > /dev/null 2>&1 || rpk topic create quote-clicks -r 3 -p 1 -X brokers=kafka:9092; do sleep 2; done; until rpk topic alter-config quote-clicks --set replication.factor=3 -X brokers=kafka:9092; do sleep 2; done'
+      - 'until rpk topic describe quote-clicks -X brokers=kafka:9092 > /dev/null 2>&1 || rpk topic create quote-clicks -r 3 -p 1 -X brokers=kafka:9092; do sleep 2; done; until rpk topic alter-config quote-clicks --set replication.factor=3 --set retention.ms=86400000 -X brokers=kafka:9092; do sleep 2; done'
     depends_on:
       kafka:
         condition: service_started
@@ -95,7 +97,7 @@ services:
         condition: service_started
   notification:
     build:
-      context: ./notification
+      context: ./backend/notification
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -109,7 +111,7 @@ services:
         condition: service_healthy
   telegram-bot:
     build:
-      context: ./notification
+      context: ./backend/notification
     command: ["python", "-u", "bot_listener.py"]
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}

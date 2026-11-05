@@ -9,9 +9,9 @@ resources:
 configMapGenerator:
   - name: postgres-init
     files:
-      - 01-init.sql=../../berserk-quotes/init.sql
+      - 01-init.sql=../../KikoRiki-quotes/init.sql
       - 02-smeshariki-quotes.sql=../../smeshariki_quotes.sql
-      - 03-telegram.sql=../../berserk-quotes/telegram.sql
+      - 03-telegram.sql=../../KikoRiki-quotes/telegram.sql
   - name: nginx-config
     files:
       - default.conf=nginx.conf

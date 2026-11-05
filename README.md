@@ -12,12 +12,14 @@
 
 Для привязки браузера отдельный процесс получает команды `/start` от Telegram. Три брокера Redpanda хранят по реплике топика `quote-clicks`.
 
+Код сервисов находится в `KikoRiki-quotes/backend/main` и `KikoRiki-quotes/backend/notification`. Страница находится отдельно в `KikoRiki-quotes/frontend`.
+
 ## Запуск
 
 Установите и запустите Docker Desktop. В PowerShell из корня репозитория:
 
 ```powershell
-cd berserk-quotes
+cd KikoRiki-quotes
 Copy-Item .env.example .env
 docker compose up -d --build
 docker compose ps
@@ -27,7 +29,7 @@ docker compose ps
 
 ## Уведомления в Telegram
 
-Создайте бота через [BotFather](https://t.me/BotFather) и укажите его токен и имя в `berserk-quotes/.env`:
+Создайте бота через [BotFather](https://t.me/BotFather) и укажите его токен и имя в `KikoRiki-quotes/.env`:
 
 ```env
 TELEGRAM_BOT_TOKEN=токен_бота
@@ -74,10 +76,16 @@ docker compose exec kafka rpk topic describe quote-clicks -p -X brokers=kafka:90
 ## Тесты и развёртывание
 
 ```powershell
-python -m pip install -r berserk-quotes/requirements-test.txt
-python -m pytest -q berserk-quotes/tests
+python -m pip install -r KikoRiki-quotes/backend/main/requirements-test.txt
+python -m pytest -q KikoRiki-quotes/backend/main/tests
 ```
 
 Инструкции по GitLab CI, Ansible и Minikube находятся в [deploy/README.md](deploy/README.md). GitLab pipeline и развёртывание на удалённом сервере требуют отдельной настройки runner, Registry и SSH-доступа.
 
-`smeshariki_to_sql.py` собирает записи из Викицитатника в `smeshariki_quotes.sql`. Перед публикацией цитат проверьте их достоверность и права на использование.
+Цитаты для начального заполнения базы находятся в `smeshariki_quotes.sql`. Перед публикацией проверьте их достоверность и права на использование.
+
+## Данные пользователей
+
+Для привязки браузера к боту PostgreSQL сохраняет ID чата Telegram и хеш случайной сессии браузера. При создании QR-кода также сохраняются хеш одноразового кода и время его истечения; после привязки они очищаются. Неиспользованный истёкший код остаётся в базе до повторной привязки или отвязки. В браузере хранится cookie `quotes_session`; без него нельзя определить получателя уведомления. При отвязке запись удаляется. Пока пользователь не привязал Telegram, его ID чата не сохраняется.
+
+В Kafka события содержат хеш сессии и время нажатия; срок хранения настроен на 24 часа, фактическое удаление выполняется брокером асинхронно. В базе также хранится служебная позиция обработки обновлений бота. Обычные access-логи Nginx и Uvicorn выключены; ошибки инфраструктуры всё ещё могут содержать технические данные. Telegram обрабатывает данные в соответствии со своими правилами. Для публичного сервиса нужны HTTPS, защита базы и настройка сроков хранения.

@@ -32,7 +32,7 @@
 4. После успешной сборки основной ветки вручную запусти `deploy-server` в pipeline. Проверь `http://АДРЕС_СЕРВЕРА:8088` и логи на сервере:
 
    ```bash
-   cd /opt/smeshariki/berserk-quotes
+   cd /opt/smeshariki/KikoRiki-quotes
    sudo docker compose -f compose.yaml -f ../deploy/compose.images.yaml ps -a
    sudo docker compose -f compose.yaml -f ../deploy/compose.images.yaml logs --tail 50 notification
    ```
@@ -59,15 +59,15 @@ kubectl -n smeshariki get pvc
 .\.local\minikube.exe -p smeshariki service frontend -n smeshariki --url
 ```
 
-На Windows последняя команда может держать терминал открытым для туннеля: открой показанный ею URL в браузере и оставь команду работать. `notification` и `telegram-bot` по умолчанию выключены до настройки Telegram Secret. После заполнения `berserk-quotes/.env` создай Secret из этого файла и включи их:
+На Windows последняя команда может держать терминал открытым для туннеля: открой показанный ею URL в браузере и оставь команду работать. `notification` и `telegram-bot` по умолчанию выключены до настройки Telegram Secret. После заполнения `KikoRiki-quotes/.env` создай Secret из этого файла и включи их:
 
 ```powershell
-kubectl -n smeshariki create secret generic telegram --from-env-file=berserk-quotes/.env
+kubectl -n smeshariki create secret generic telegram --from-env-file=KikoRiki-quotes/.env
 kubectl -n smeshariki scale deployment/notification --replicas=1
 kubectl -n smeshariki scale deployment/telegram-bot --replicas=1
 ```
 
-Если Secret уже создан, обнови его через `kubectl` с учётом своих настроек, не записывая значения в репозиторий. Повторный запуск `start.ps1` возвращает оба сервиса к нулю реплик; включи их снова командой `scale`. Одновременно запускай только один `telegram-bot` с данным токеном: перед включением в Kubernetes останови его в Compose (`docker compose stop telegram-bot` из `berserk-quotes`). Для проверки приложения:
+Если Secret уже создан, обнови его через `kubectl` с учётом своих настроек, не записывая значения в репозиторий. Повторный запуск `start.ps1` возвращает оба сервиса к нулю реплик; включи их снова командой `scale`. Одновременно запускай только один `telegram-bot` с данным токеном: перед включением в Kubernetes останови его в Compose (`docker compose stop telegram-bot` из `KikoRiki-quotes`). Для проверки приложения:
 
 ```powershell
 kubectl -n smeshariki rollout status deployment/app --timeout=180s

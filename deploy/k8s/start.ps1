@@ -19,11 +19,12 @@ if (-not (Test-Path $minikube)) {
     Move-Item -LiteralPath $download -Destination $minikube -Force
 }
 Run-Checked $minikube @('start', '-p', 'smeshariki', '--driver=docker', '--cpus=2', '--memory=4096')
-Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-app:local', (Join-Path $projectRoot 'berserk-quotes'))
-Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-notification:local', (Join-Path $projectRoot 'berserk-quotes/notification'))
-Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-frontend:local', (Join-Path $projectRoot 'berserk-quotes/frontend'))
+Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-app:local', (Join-Path $projectRoot 'KikoRiki-quotes/backend/main'))
+Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-notification:local', (Join-Path $projectRoot 'KikoRiki-quotes/backend/notification'))
+Run-Checked $minikube @('image', 'build', '-p', 'smeshariki', '-t', 'smeshariki-frontend:local', (Join-Path $projectRoot 'KikoRiki-quotes/frontend'))
 $rendered = Join-Path $localDir 'kubernetes.yaml'
 Run-Checked 'kubectl' @('kustomize', (Join-Path $projectRoot 'deploy/k8s'), '--load-restrictor', 'LoadRestrictionsNone', '-o', $rendered)
 Run-Checked 'kubectl' @('apply', '-f', $rendered)
+Run-Checked 'kubectl' @('-n', 'smeshariki', 'rollout', 'restart', 'deployment/app', 'deployment/frontend')
 Write-Host 'Configure the Telegram Secret as explained in deploy/README.md.'
 Write-Host 'Run: .local\minikube.exe -p smeshariki service frontend -n smeshariki --url'

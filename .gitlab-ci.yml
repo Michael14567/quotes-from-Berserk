@@ -7,9 +7,9 @@ test:
   stage: test
   image: python:3.12-slim
   script:
-    - pip install -r berserk-quotes/requirements-test.txt
-    - python -m pytest -q berserk-quotes/tests
-    - python -m compileall -q berserk-quotes/app.py berserk-quotes/notification/consumer.py berserk-quotes/notification/bot_listener.py
+    - pip install -r KikoRiki-quotes/backend/main/requirements-test.txt
+    - python -m pytest -q KikoRiki-quotes/backend/main/tests
+    - python -m compileall -q KikoRiki-quotes/backend/main/app.py KikoRiki-quotes/backend/notification/consumer.py KikoRiki-quotes/backend/notification/bot_listener.py
 
 validate-ansible:
   stage: test
@@ -32,9 +32,9 @@ build-images:
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
-    - docker build -t "$CI_REGISTRY_IMAGE/app:$CI_COMMIT_SHA" berserk-quotes
-    - docker build -t "$CI_REGISTRY_IMAGE/notification:$CI_COMMIT_SHA" berserk-quotes/notification
-    - docker build -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA" berserk-quotes/frontend
+    - docker build -t "$CI_REGISTRY_IMAGE/app:$CI_COMMIT_SHA" KikoRiki-quotes/backend/main
+    - docker build -t "$CI_REGISTRY_IMAGE/notification:$CI_COMMIT_SHA" KikoRiki-quotes/backend/notification
+    - docker build -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA" KikoRiki-quotes/frontend
     - docker push "$CI_REGISTRY_IMAGE/app:$CI_COMMIT_SHA"
     - docker push "$CI_REGISTRY_IMAGE/notification:$CI_COMMIT_SHA"
     - docker push "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA"
