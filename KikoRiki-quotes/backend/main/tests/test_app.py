@@ -1,4 +1,5 @@
 import sys
+import json
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -27,6 +28,28 @@ def test_click_commits_kafka_transaction(monkeypatch):
     producer.begin_transaction.assert_called_once()
     producer.produce.assert_called_once()
     producer.commit_transaction.assert_called_once()
+
+
+def test_click_publishes_the_quote_from_database(monkeypatch):
+    producer = Mock()
+    query = Mock(return_value=[{"text": "Пример цитаты", "character": "Бараш"}])
+    monkeypatch.setattr(app, "producer", producer)
+    monkeypatch.setattr(app, "producer_initialized", True)
+    monkeypatch.setattr(app, "fetch_all", query)
+    response = TestClient(app.app).post("/quote-click", json={"quote_id": 7})
+    assert response.status_code == 202
+    assert query.call_args.args[1] == (7,)
+    event = json.loads(producer.produce.call_args.kwargs["value"])
+    assert event["quote"] == {"text": "Пример цитаты", "character": "Бараш"}
+
+
+def test_click_rejects_unknown_quote(monkeypatch):
+    producer = Mock()
+    monkeypatch.setattr(app, "producer", producer)
+    monkeypatch.setattr(app, "fetch_all", Mock(return_value=[]))
+    response = TestClient(app.app).post("/quote-click", json={"quote_id": 999})
+    assert response.status_code == 404
+    producer.produce.assert_not_called()
 
 
 def test_click_returns_503_and_aborts_if_kafka_fails(monkeypatch):

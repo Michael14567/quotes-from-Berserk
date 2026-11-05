@@ -13,6 +13,7 @@ import psycopg
 from confluent_kafka import KafkaException, Producer
 from fastapi import FastAPI, HTTPException, Request, Response
 from psycopg.rows import dict_row
+from pydantic import BaseModel, Field
 import qrcode
 import qrcode.image.svg
 import database
@@ -109,10 +110,19 @@ def list_smeshariki_quotes(character: str | None = None):
     return fetch_all("SELECT id, text, character FROM smeshariki_quotes ORDER BY id")
 
 
+class QuoteClick(BaseModel):
+    quote_id: int = Field(gt=0)
+
+
 @app.post("/quote-click", status_code=202)
-def quote_click(request: Request):
+def quote_click(request: Request, payload: QuoteClick | None = None):
     global producer_initialized
     event = {"event_id": str(uuid4()), "type": "quote_button_clicked", "occurred_at": datetime.now(timezone.utc).isoformat()}
+    if payload is not None:
+        quotes = fetch_all("SELECT text, character FROM smeshariki_quotes WHERE id = %s", (payload.quote_id,))
+        if not quotes:
+            raise HTTPException(status_code=404, detail="Цитата не найдена")
+        event["quote"] = quotes[0]
     session = session_key(request)
     if session:
         event["session_hash"] = session

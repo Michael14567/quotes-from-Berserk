@@ -1,6 +1,6 @@
 # Цитатник Смешариков
 
-Небольшой сервис, который показывает случайную цитату и отправляет уведомление в Telegram. Уведомления получает пользователь, привязавший свой браузер к боту через QR-код.
+Небольшой сервис, который показывает случайную цитату и отправляет её в Telegram. Цитату получает пользователь, привязавший свой браузер к боту через QR-код.
 
 Проект использует FastAPI, PostgreSQL, Nginx и Redpanda (брокер с поддержкой Kafka API). Все компоненты запускаются через Docker Compose.
 
@@ -61,7 +61,7 @@ docker compose exec -T db psql -v ON_ERROR_STOP=1 -U quotes -d quotes -f /docker
 Swagger доступен на [localhost:8000/docs](http://localhost:8000/docs). Основные маршруты:
 
 - `GET /smeshariki-quotes` — цитаты; параметр `character` фильтрует их по персонажу.
-- `POST /quote-click` — событие нажатия кнопки.
+- `POST /quote-click` — событие с выбранной цитатой: `{"quote_id": 1}`.
 - `POST /telegram/link`, `GET /telegram/status`, `DELETE /telegram/link` — привязка и отвязка Telegram.
 
 Nginx направляет запросы с префиксом `/api/` в FastAPI. Посмотреть логи и состояние брокеров:

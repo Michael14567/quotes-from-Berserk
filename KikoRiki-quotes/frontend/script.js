@@ -78,8 +78,6 @@ async function typeText(text) {
 button.addEventListener('click', async () => {
   button.disabled = true;
   output.textContent = '';
-  // Уведомление не должно мешать показу цитаты, если Kafka недоступна.
-  fetch('/api/quote-click', { method: 'POST' }).catch(() => {});
   try {
     const response = await fetch('/api/smeshariki-quotes', { cache: 'no-store' });
     if (!response.ok) throw new Error('Сервис недоступен');
@@ -88,6 +86,12 @@ button.addEventListener('click', async () => {
     const choices = quotes.length > 1 ? quotes.filter(quote => quote.id !== lastId) : quotes;
     const quote = choices[Math.floor(Math.random() * choices.length)];
     lastId = quote.id;
+    // Уведомление не должно мешать показу цитаты, если Kafka недоступна.
+    fetch('/api/quote-click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quote_id: quote.id }),
+    }).catch(() => {});
     await typeText(`${quote.text}\n\n— ${quote.character}`);
   } catch (error) {
     output.textContent = 'Не удалось получить цитату. Попробуйте ещё раз.';

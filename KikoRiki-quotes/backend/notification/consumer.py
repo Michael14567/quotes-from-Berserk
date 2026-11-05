@@ -22,7 +22,13 @@ def stop(_signum, _frame):
 
 
 def send_telegram(token, chat_id, event):
-    body = parse.urlencode({"chat_id": chat_id, "text": "Нажата кнопка получения цитаты Смешариков."}).encode()
+    quote = event.get("quote")
+    if isinstance(quote, dict) and isinstance(quote.get("text"), str) and isinstance(quote.get("character"), str):
+        text = f"{quote['text']}\n\n— {quote['character']}"
+    else:
+        # События, записанные до обновления приложения, не содержат цитату.
+        text = "Нажата кнопка получения цитаты Смешариков."
+    body = parse.urlencode({"chat_id": chat_id, "text": text[:4096]}).encode()
     req = request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=body, method="POST")
     try:
         with request.urlopen(req, timeout=10) as response:
