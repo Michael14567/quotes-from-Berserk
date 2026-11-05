@@ -7,6 +7,8 @@
     project_source: "{{ playbook_dir }}/../.."
     app_image: "{{ lookup('env', 'CI_REGISTRY_IMAGE') }}/app:{{ lookup('env', 'CI_COMMIT_SHA') }}"
     notification_image: "{{ lookup('env', 'CI_REGISTRY_IMAGE') }}/notification:{{ lookup('env', 'CI_COMMIT_SHA') }}"
+    deploy_https: "{{ lookup('env', 'DEPLOY_HTTPS') | default('true', true) | lower }}"
+    compose_command: "{{ ['docker', 'compose', '-f', 'compose.yaml', '-f', '../deploy/compose.images.yaml', '-f', '../deploy/compose.remote-server.yaml'] + (['-f', '../deploy/compose.https.yaml'] if deploy_https == 'true' else []) }}"
   pre_tasks:
     - name: Проверить обязательные настройки
       ansible.builtin.assert:
@@ -16,6 +18,7 @@
           - lookup('env', 'CI_COMMIT_SHA') | length > 0
           - lookup('env', 'REGISTRY_DEPLOY_USER') | length > 0
           - lookup('env', 'REGISTRY_DEPLOY_PASSWORD') | length > 0
+          - deploy_https in ['true', 'false']
           - lookup('env', 'SITE_DOMAIN') is match('^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$')
           - lookup('env', 'POSTGRES_PASSWORD') is match('^[A-Za-z0-9_-]{32,}$')
         fail_msg: Проверь переменные Registry, SITE_DOMAIN и POSTGRES_PASSWORD в GitLab CI/CD.
@@ -116,22 +119,22 @@
       no_log: true
     - name: Скачать образы этой версии
       ansible.builtin.command:
-        argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, -f, ../deploy/compose.https.yaml, -f, ../deploy/compose.remote-server.yaml, pull, caddy, nginx, app, db, kafka, kafka-2, kafka-3, kafka-init]
+        argv: "{{ compose_command + ['pull'] + (['caddy'] if deploy_https == 'true' else []) + ['nginx', 'app', 'db', 'kafka', 'kafka-2', 'kafka-3', 'kafka-init'] }}"
         chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: true
     - name: Остановить обработчики Telegram на сервере
       ansible.builtin.command:
-        argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, -f, ../deploy/compose.https.yaml, -f, ../deploy/compose.remote-server.yaml, stop, notification, telegram-bot]
+        argv: "{{ compose_command + ['stop', 'notification', 'telegram-bot'] }}"
         chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: false
     - name: Запустить сайт, базу и Kafka
       ansible.builtin.command:
-        argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, -f, ../deploy/compose.https.yaml, -f, ../deploy/compose.remote-server.yaml, up, -d, --no-build, --remove-orphans, caddy]
+        argv: "{{ compose_command + ['up', '-d', '--no-build', '--remove-orphans', 'caddy' if deploy_https == 'true' else 'nginx'] }}"
         chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: true
     - name: Добавить таблицы привязки в существующую базу
       ansible.builtin.command:
-        argv: [docker, compose, -f, compose.yaml, -f, ../deploy/compose.images.yaml, -f, ../deploy/compose.https.yaml, -f, ../deploy/compose.remote-server.yaml, exec, -T, db, psql, -v, ON_ERROR_STOP=1, -U, quotes, -d, quotes, -f, /docker-entrypoint-initdb.d/03-telegram.sql]
+        argv: "{{ compose_command + ['exec', '-T', 'db', 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'quotes', '-d', 'quotes', '-f', '/docker-entrypoint-initdb.d/03-telegram.sql'] }}"
         chdir: "{{ project_dir }}/KikoRiki-quotes"
       changed_when: false
     - name: Проверить API через Nginx
@@ -151,3 +154,4 @@
       until: https_check.status | default(0) == 200
       retries: 20
       delay: 6
+      when: deploy_https == 'true'

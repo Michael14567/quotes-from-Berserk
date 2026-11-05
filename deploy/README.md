@@ -25,6 +25,7 @@
 | `REGISTRY_DEPLOY_PASSWORD` | Пароль этого deploy token |
 | `TELEGRAM_BOT_USERNAME` | Имя бота без `@` (можно не задавать для `KikoRiki_quotes_bot`) |
 | `SITE_DOMAIN` | Домен без `https://`, указывающий на сервер |
+| `DEPLOY_HTTPS` | Необязательно: `true` по умолчанию. До готовности DNS укажи `false` для доступа только через SSH-туннель; после этого верни `true` и запусти deploy снова |
 | `POSTGRES_PASSWORD` | Случайный пароль длиной не менее 32 символов из букв, цифр, `_` и `-`; protected и masked |
 
 При создании сервера Timeweb можно вставить содержимое [`cloud-init.yaml`](cloud-init.yaml) в поле Cloud-init. Оно устанавливает Docker, Compose и Python; SSH-ключ выбирается отдельно в разделе «Авторизация». Проверить завершение настройки после подключения: `cloud-init status --wait`, `docker --version`, `docker compose version` и `systemctl is-active docker`.
