@@ -1,0 +1,7 @@
+services:
+  app:
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+  notification:
+    image: ${NOTIFICATION_IMAGE:?NOTIFICATION_IMAGE is required}
+  telegram-bot:
+    image: ${NOTIFICATION_IMAGE:?NOTIFICATION_IMAGE is required}

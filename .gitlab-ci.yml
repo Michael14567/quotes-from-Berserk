@@ -1,0 +1,61 @@
+stages:
+  - test
+  - build
+  - deploy
+
+test:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install -r berserk-quotes/requirements-test.txt
+    - python -m pytest -q berserk-quotes/tests
+    - python -m compileall -q berserk-quotes/app.py berserk-quotes/notification/consumer.py berserk-quotes/notification/bot_listener.py
+
+validate-ansible:
+  stage: test
+  image: python:3.12-alpine
+  script:
+    - pip install ansible-core==2.18.6
+    - ansible-playbook --syntax-check -i localhost, deploy/ansible/deploy.yml
+
+build-images:
+  stage: build
+  image: docker:27.5.1-cli
+  services:
+    - name: docker:27.5.1-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: /certs/client
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/app:$CI_COMMIT_SHA" berserk-quotes
+    - docker build -t "$CI_REGISTRY_IMAGE/notification:$CI_COMMIT_SHA" berserk-quotes/notification
+    - docker build -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA" berserk-quotes/frontend
+    - docker push "$CI_REGISTRY_IMAGE/app:$CI_COMMIT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/notification:$CI_COMMIT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy-server:
+  stage: deploy
+  image: python:3.12-alpine
+  resource_group: smeshariki-server
+  before_script:
+    - apk add --no-cache openssh-client
+    - pip install ansible-core==2.18.6
+    - install -d -m 700 ~/.ssh
+    - cp "$SSH_PRIVATE_KEY" ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+    - cp "$SSH_KNOWN_HOSTS" ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+  script:
+    - ansible-playbook -i "$DEPLOY_HOST," -u "$DEPLOY_USER" deploy/ansible/deploy.yml
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: false

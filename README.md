@@ -1,93 +1,83 @@
-# quotes-from-KikoRiki
+# Цитатник Смешариков
 
+Небольшой сервис, который показывает случайную цитату и отправляет уведомление в Telegram. Уведомления получает пользователь, привязавший свой браузер к боту через QR-код.
 
+Проект использует FastAPI, PostgreSQL, Nginx и Redpanda (брокер с поддержкой Kafka API). Все компоненты запускаются через Docker Compose.
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.com/Michael14567/quotes-from-kikoriki.git
-git branch -M main
-git push -uf origin main
+```text
+Браузер → Nginx → FastAPI → PostgreSQL
+                      ↓
+                Redpanda / Kafka → сервис уведомлений → Telegram
 ```
 
-## Integrate with your tools
+Для привязки браузера отдельный процесс получает команды `/start` от Telegram. Три брокера Redpanda хранят по реплике топика `quote-clicks`.
 
-* [Set up project integrations](https://gitlab.com/Michael14567/quotes-from-kikoriki/-/settings/integrations)
+## Запуск
 
-## Collaborate with your team
+Установите и запустите Docker Desktop. В PowerShell из корня репозитория:
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```powershell
+cd berserk-quotes
+Copy-Item .env.example .env
+docker compose up -d --build
+docker compose ps
+```
 
-## Test and Deploy
+Откройте [localhost:8088](http://localhost:8088). Кнопка показывает случайную цитату. Сервис цитат работает без настроек Telegram.
 
-Use the built-in continuous integration in GitLab.
+## Уведомления в Telegram
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Создайте бота через [BotFather](https://t.me/BotFather) и укажите его токен и имя в `berserk-quotes/.env`:
 
-***
+```env
+TELEGRAM_BOT_TOKEN=токен_бота
+TELEGRAM_BOT_USERNAME=имя_бота_без_собаки
+SESSION_COOKIE_SECURE=false
+```
 
-# Editing this README
+Файл `.env` хранится локально и исключён из Git. После изменения настроек пересоздайте сервисы:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```powershell
+docker compose up -d --build
+```
 
-## Suggestions for a good README
+На сайте нажмите «Привязать Telegram», отсканируйте QR-код и нажмите Start в боте. Можно также открыть бота по ссылке под кодом. Код действует пять минут и подходит для одной привязки. Не передавайте его другим людям. При смене браузера или очистке cookie привязку нужно повторить. Кнопка «Отвязать Telegram» удаляет связь.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Получение обновлений через `getUpdates` должно быть запущено только в одном экземпляре бота. Не включайте `telegram-bot` одновременно в Compose и Minikube с одним токеном.
 
-## Name
-Choose a self-explaining name for your project.
+На существующей базе после обновления проекта примените миграцию:
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```powershell
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U quotes -d quotes -f /docker-entrypoint-initdb.d/03-telegram.sql
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## API и диагностика
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Swagger доступен на [localhost:8000/docs](http://localhost:8000/docs). Основные маршруты:
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+- `GET /smeshariki-quotes` — цитаты; параметр `character` фильтрует их по персонажу.
+- `POST /quote-click` — событие нажатия кнопки.
+- `POST /telegram/link`, `GET /telegram/status`, `DELETE /telegram/link` — привязка и отвязка Telegram.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Nginx направляет запросы с префиксом `/api/` в FastAPI. Посмотреть логи и состояние брокеров:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```powershell
+docker compose logs --tail 50 app notification telegram-bot
+docker compose exec kafka rpk cluster info -X brokers=kafka:9092
+docker compose exec kafka rpk topic describe quote-clicks -p -X brokers=kafka:9092
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+События Kafka отправляются в транзакции с `enable.idempotence` и `acks=all`. Consumer читает подтверждённые транзакции. При сбое после принятия сообщения Telegram и до сохранения позиции Kafka уведомление может прийти повторно; транзакция Kafka не охватывает Telegram API.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Данные PostgreSQL и брокеров сохраняются в Docker volumes. `docker compose down` останавливает сервисы без удаления данных; `docker compose down -v` удаляет также volumes. SQL-файлы инициализации применяются при создании пустой базы. Пароль базы в конфигурации учебный. Для публичного сервера нужны HTTPS, отдельные секреты и резервные копии; после настройки HTTPS установите `SESSION_COOKIE_SECURE=true`.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## Тесты и развёртывание
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```powershell
+python -m pip install -r berserk-quotes/requirements-test.txt
+python -m pytest -q berserk-quotes/tests
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Инструкции по GitLab CI, Ansible и Minikube находятся в [deploy/README.md](deploy/README.md). GitLab pipeline и развёртывание на удалённом сервере требуют отдельной настройки runner, Registry и SSH-доступа.
 
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+`smeshariki_to_sql.py` собирает записи из Викицитатника в `smeshariki_quotes.sql`. Перед публикацией цитат проверьте их достоверность и права на использование.

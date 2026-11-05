@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: kafka
+  ports:
+    - {name: kafka, port: 9092}
+    - {name: rpc, port: 33145}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+spec:
+  serviceName: kafka
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ordinal=${HOSTNAME##*-}
+              if [ "$ordinal" = 0 ]; then seed=""; else seed="--seeds=kafka-0.kafka:33145"; fi
+              exec rpk redpanda start --overprovisioned --smp=1 --memory=512M --reserve-memory=0M --check=false --node-id="$ordinal" --kafka-addr=0.0.0.0:9092 --advertise-kafka-addr="$HOSTNAME.kafka:9092" --rpc-addr=0.0.0.0:33145 --advertise-rpc-addr="$HOSTNAME.kafka:33145" $seed
+          ports:
+            - {name: kafka, containerPort: 9092}
+            - {name: rpc, containerPort: 33145}
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 10
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/redpanda/data}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init
+          image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              until rpk topic describe quote-clicks -X brokers=kafka-0.kafka:9092 >/dev/null 2>&1 || rpk topic create quote-clicks -r 3 -p 1 -X brokers=kafka-0.kafka:9092; do sleep 3; done
+              until rpk topic alter-config quote-clicks --set replication.factor=3 -X brokers=kafka-0.kafka:9092; do sleep 3; done

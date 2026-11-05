@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Цитаты Смешариков</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/script.js" defer></script>
+</head>
+<body>
+  <main class="terminal">
+    <div class="output" aria-live="polite" aria-atomic="true"><span class="prompt" aria-hidden="true">&gt; </span><span id="quote"></span><span class="cursor" aria-hidden="true"></span></div>
+    <div class="actions">
+      <button id="next" type="button">Получить цитату <span aria-hidden="true">↵</span></button>
+      <button id="telegram" type="button">Привязать Telegram</button>
+      <div id="pairing" class="pairing" hidden>
+        <img id="qr" alt="QR-код для привязки Telegram" width="200" height="200">
+        <p>Отсканируйте QR-код и нажмите Start в боте.</p>
+        <a id="bot-link" target="_blank" rel="noopener noreferrer">Открыть бота</a>
+        <p id="pairing-status" role="status"></p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

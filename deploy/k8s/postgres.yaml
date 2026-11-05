@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector:
+    app: db
+  ports:
+    - port: 5432
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - {name: POSTGRES_DB, value: quotes}
+            - {name: POSTGRES_USER, value: quotes}
+            - {name: POSTGRES_PASSWORD, value: quotes}
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, quotes, -d, quotes]
+            initialDelaySeconds: 5
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: postgres-data
+        - name: init
+          configMap:
+            name: postgres-init
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: telegram-schema
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: postgres:16
+          env:
+            - {name: PGPASSWORD, value: quotes}
+          command: ["/bin/sh", "-c"]
+          args:
+            - 'until pg_isready -h db -U quotes -d quotes; do sleep 2; done; psql -h db -U quotes -d quotes -v ON_ERROR_STOP=1 -f /schema/03-telegram.sql'
+          volumeMounts:
+            - {name: schema, mountPath: /schema}
+      volumes:
+        - name: schema
+          configMap:
+            name: postgres-init

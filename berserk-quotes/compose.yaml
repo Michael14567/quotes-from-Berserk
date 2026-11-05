@@ -1,0 +1,140 @@
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8088:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - app
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://quotes:quotes@db:5432/quotes
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-KikoRiki_quotes_bot}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+  kafka:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://kafka:9092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=kafka:33145
+    volumes:
+      - kafka_data:/var/lib/redpanda/data
+  kafka-2:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=1
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://kafka-2:9092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=kafka-2:33145
+      - --seeds=kafka:33145
+    volumes:
+      - kafka_data_2:/var/lib/redpanda/data
+    depends_on:
+      - kafka
+  kafka-3:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --node-id=2
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://kafka-3:9092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=kafka-3:33145
+      - --seeds=kafka:33145
+    volumes:
+      - kafka_data_3:/var/lib/redpanda/data
+    depends_on:
+      - kafka
+  kafka-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.5
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'until rpk topic describe quote-clicks -X brokers=kafka:9092 > /dev/null 2>&1 || rpk topic create quote-clicks -r 3 -p 1 -X brokers=kafka:9092; do sleep 2; done; until rpk topic alter-config quote-clicks --set replication.factor=3 -X brokers=kafka:9092; do sleep 2; done'
+    depends_on:
+      kafka:
+        condition: service_started
+      kafka-2:
+        condition: service_started
+      kafka-3:
+        condition: service_started
+  notification:
+    build:
+      context: ./notification
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      DATABASE_URL: postgresql://quotes:quotes@db:5432/quotes
+    depends_on:
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+  telegram-bot:
+    build:
+      context: ./notification
+    command: ["python", "-u", "bot_listener.py"]
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      DATABASE_URL: postgresql://quotes:quotes@db:5432/quotes
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: quotes
+      POSTGRES_USER: quotes
+      POSTGRES_PASSWORD: quotes
+    volumes:
+      - quotes_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../smeshariki_quotes.sql:/docker-entrypoint-initdb.d/02-smeshariki-quotes.sql:ro
+      - ./telegram.sql:/docker-entrypoint-initdb.d/03-telegram.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quotes -d quotes"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  quotes_data:
+  kafka_data:
+  kafka_data_2:
+  kafka_data_3:

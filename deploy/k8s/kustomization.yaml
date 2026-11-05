@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: smeshariki
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - applications.yaml
+configMapGenerator:
+  - name: postgres-init
+    files:
+      - 01-init.sql=../../berserk-quotes/init.sql
+      - 02-smeshariki-quotes.sql=../../smeshariki_quotes.sql
+      - 03-telegram.sql=../../berserk-quotes/telegram.sql
+  - name: nginx-config
+    files:
+      - default.conf=nginx.conf
+generatorOptions:
+  disableNameSuffixHash: true
