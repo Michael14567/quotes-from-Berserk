@@ -89,6 +89,7 @@
         - KikoRiki-quotes/frontend/index.html
         - KikoRiki-quotes/frontend/style.css
         - KikoRiki-quotes/frontend/script.js
+        - KikoRiki-quotes/frontend/learning.js
         - KikoRiki-quotes/frontend/cloud-hippo.png
         - smeshariki_quotes.sql
         - deploy/compose.images.yaml

@@ -5,7 +5,7 @@ import base64
 import hashlib
 import io
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from threading import Lock
 from uuid import uuid4
 
@@ -13,7 +13,7 @@ import psycopg
 from confluent_kafka import KafkaException, Producer
 from fastapi import FastAPI, HTTPException, Request, Response
 from psycopg.rows import dict_row
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import qrcode
 import qrcode.image.svg
 import database
@@ -98,6 +98,73 @@ def delete_telegram_link(request: Request, response: Response):
         fetch_all("DELETE FROM telegram_sessions WHERE session_hash = %s RETURNING session_hash", (session,))
     response.delete_cookie("quotes_session")
     return {"linked": False}
+
+
+def task_owner(request: Request) -> int:
+    session = session_key(request)
+    rows = fetch_all("SELECT chat_id FROM telegram_sessions WHERE session_hash = %s", (session,)) if session else []
+    if not rows or rows[0]["chat_id"] is None:
+        raise HTTPException(status_code=401, detail="Для задач привяжите Telegram")
+    return rows[0]["chat_id"]
+
+
+class TaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def trim_title(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Введите название задачи")
+        return value
+
+
+class TaskUpdate(BaseModel):
+    done: bool = Field(strict=True)
+
+
+@app.get("/tasks")
+def list_tasks(request: Request, response: Response):
+    owner = task_owner(request)
+    response.headers["Cache-Control"] = "no-store"
+    rows = fetch_all(
+        """SELECT id, title, done FROM daily_tasks
+           WHERE chat_id = %s AND task_date = (now() AT TIME ZONE 'Europe/Moscow')::date ORDER BY id""",
+        (owner,),
+    )
+    return {"date": datetime.now(timezone(timedelta(hours=3))).date().isoformat(), "tasks": rows}
+
+
+@app.post("/tasks", status_code=201)
+def create_task(request: Request, payload: TaskCreate):
+    owner = task_owner(request)
+    return fetch_all(
+        "INSERT INTO daily_tasks (chat_id, title) VALUES (%s, %s) RETURNING id, title, done",
+        (owner, payload.title),
+    )[0]
+
+
+@app.patch("/tasks/{task_id}")
+def update_task(task_id: int, request: Request, payload: TaskUpdate):
+    owner = task_owner(request)
+    rows = fetch_all(
+        """UPDATE daily_tasks SET done = %s WHERE id = %s AND chat_id = %s
+           AND task_date = (now() AT TIME ZONE 'Europe/Moscow')::date RETURNING id, title, done""",
+        (payload.done, task_id, owner),
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return rows[0]
+
+
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int, request: Request):
+    owner = task_owner(request)
+    rows = fetch_all("DELETE FROM daily_tasks WHERE id = %s AND chat_id = %s RETURNING id", (task_id, owner))
+    if not rows:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return Response(status_code=204)
 
 
 @app.get("/smeshariki-quotes")

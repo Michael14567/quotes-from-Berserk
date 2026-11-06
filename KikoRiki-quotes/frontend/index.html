@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Цитаты Смешариков</title>
-  <link rel="stylesheet" href="/style.css?v=6">
-  <script src="/script.js?v=3" defer></script>
+  <link rel="stylesheet" href="/style.css?v=7">
+  <script src="/script.js?v=4" defer></script>
+  <script src="/learning.js?v=1" defer></script>
 </head>
 <body>
   <main class="terminal">
@@ -22,10 +23,67 @@
       <img class="cloud cloud-hippo" src="/cloud-hippo.png" alt="">
     </div>
     <div class="output" aria-live="polite" aria-atomic="true"><span class="prompt" aria-hidden="true">&gt; </span><span id="quote"></span><span class="cursor" aria-hidden="true"></span></div>
+    <div id="workspace" class="workspace" hidden>
+      <section id="practice-panel" class="work-panel" aria-labelledby="practice-title" hidden>
+        <div class="panel-heading"><div><p class="eyebrow">~/interview/practice</p><h1 id="practice-title">Немного практики</h1></div><button type="button" data-close-panel aria-label="Закрыть тренировку">Закрыть ×</button></div>
+        <p class="muted">Напиши своё решение, затем сравни с примером. SQL и команды здесь не выполняются: это тренажёр для самопроверки.</p>
+        <div class="toolbar"><label>Тема <select id="practice-topic"><option value="sql">SQL · PostgreSQL</option><option value="linux">Linux · сопровождение</option></select></label><span id="practice-progress" class="muted" role="status"></span></div>
+        <p id="practice-number" class="eyebrow"></p><h2 id="practice-question"></h2>
+        <pre id="practice-context" class="code-block"></pre>
+        <label class="field-label" for="practice-answer">Твоё решение</label><textarea id="practice-answer" rows="5" spellcheck="false" placeholder="Напиши запрос или команду…"></textarea>
+        <div class="toolbar"><button id="practice-hint" type="button">Подсказка</button><button id="practice-reveal" type="button">Сравнить с решением</button></div>
+        <p id="practice-hint-text" class="notice" hidden></p>
+        <div id="practice-solution" hidden><pre id="practice-code" class="code-block"></pre><p id="practice-explanation" class="muted"></p><button id="practice-understood" type="button">Разобрался ✓</button></div>
+        <div class="toolbar practice-footer"><button id="practice-prev" type="button">← Назад</button><button id="practice-next" type="button">Следующее →</button></div>
+      </section>
+      <section id="map-panel" class="work-panel" aria-labelledby="map-title" hidden>
+        <div class="panel-heading"><div><p class="eyebrow">~/project/map</p><h1 id="map-title">Как всё связано</h1></div><button type="button" data-close-panel aria-label="Закрыть карту">Закрыть ×</button></div>
+        <p class="muted">Учебная имитация реального пути данных. Выбери сценарий и пройди его по шагам. Схема не отправляет запросы и не показывает состояние серверов в реальном времени.</p>
+        <div class="toolbar"><label>Сценарий <select id="map-scenario"><option value="quote">Получить цитату</option><option value="notification">Отправить цитату в Telegram</option><option value="link">Привязать Telegram</option><option value="tasks">Сохранить задачу</option></select></label><button id="map-play" type="button">▶ Запустить</button><button id="map-step" type="button">Шаг →</button><button id="map-reset" type="button">Сначала</button></div>
+        <div id="architecture" class="architecture">
+          <svg id="map-lines" class="map-lines" aria-hidden="true"><defs><marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker></defs><g id="map-paths"></g></svg>
+          <div class="map-zone map-browser"><p class="zone-label">Пользователь</p><button class="map-node" data-node="browser" type="button"><strong>Браузер</strong><small>HTML · CSS · JavaScript</small></button></div>
+          <div class="map-zone map-server"><p class="zone-label">Один Linux-сервер · Docker Compose</p><div class="server-nodes">
+            <button class="map-node" data-node="caddy" type="button"><strong>Caddy</strong><small>HTTPS :443</small></button>
+            <button class="map-node" data-node="nginx" type="button"><strong>Nginx</strong><small>Фронтенд · /api</small></button>
+            <button class="map-node" data-node="api" type="button"><strong>FastAPI</strong><small>Python · producer</small></button>
+            <button class="map-node" data-node="db" type="button"><strong>PostgreSQL</strong><small>Цитаты · привязки · задачи</small></button>
+            <button class="map-node" data-node="kafka" type="button"><strong>Redpanda × 3</strong><small>Kafka API · quote-clicks</small></button>
+          </div></div>
+          <div class="map-zone map-local"><p class="zone-label">Мой компьютер · Docker Desktop</p><div class="local-nodes">
+            <button class="map-node" data-node="tunnel" type="button"><strong>SSH-туннель</strong><small>Доступ к базе и Kafka</small></button>
+            <button class="map-node" data-node="consumer" type="button"><strong>Уведомления</strong><small>Kafka consumer</small></button>
+            <button class="map-node" data-node="bot" type="button"><strong>Обработчик бота</strong><small>/start · /tasks · /add</small></button>
+          </div></div>
+          <div class="map-zone map-telegram"><p class="zone-label">Внешний сервис</p><button class="map-node" data-node="telegram" type="button"><strong>Telegram API</strong><small>Чат пользователя</small></button></div>
+        </div>
+        <div id="map-current" class="notice" role="status" aria-live="polite">Нажми «Запустить» или «Шаг», чтобы проследить запрос.</div>
+        <div class="map-reading"><div><h2 id="map-node-title">Нажми на любой компонент</h2><p id="map-node-description" class="muted">Здесь появится его роль в проекте и с чего начать диагностику.</p></div><div><h2>Журнал сценария</h2><ol id="map-log" class="map-log"></ol></div></div>
+        <details class="interview-notes" open><summary>Как рассказать об этом на собеседовании</summary>
+          <p>«Я собрал учебный сервис цитат на Python и PostgreSQL и развернул его в Docker Compose на Linux-сервере. Nginx раздаёт страницу и направляет API-запросы, Caddy обеспечивает HTTPS. Выбранная цитата передаётся через Kafka API в отдельный сервис уведомлений, который отправляет её в Telegram».</p>
+          <p>«Уведомления и обработчик бота работают на моём компьютере, подключаясь к серверной базе и брокерам через SSH-туннель. Задачи привязаны к Telegram-чату и доступны из браузера и бота. Токен бота остаётся на компьютере, секреты исключены из Git».</p>
+          <p>«Из практики сопровождения: по логам обнаружил потерю доступа обработчиков к базе после перезапуска туннеля. Исправил переподключение и проверил восстановление после принудительного обрыва. При обновлении цитат сделал резервную копию и заменил данные одной SQL-транзакцией».</p>
+          <div class="facts-grid"><div><h3>Что можно показать</h3><ul><li>Linux, Docker Compose, Nginx, DNS и HTTPS.</li><li>Python, SQL, API и автоматические тесты.</li><li>Producer и consumer, три брокера, разбор сбоев доставки.</li><li>GitLab CI: конфигурация тестов, сборки образов и deploy через Ansible.</li></ul></div><div><h3>Границы учебного стенда</h3><ul><li>Три брокера — три контейнера на одном сервере; отказ самого сервера они не переживут.</li><li>При выключенном компьютере обработчики Telegram не работают.</li><li>CI/CD подготовлен, но запуск GitLab пока заблокирован подтверждением аккаунта.</li><li>Minikube — отдельный учебный стенд. Банковские системы, Service Manager и мониторинг ELK/Grafana/Zabbix здесь не реализованы.</li></ul></div></div>
+          <p class="muted">Kafka использует транзакции и идемпотентного producer; consumer читает подтверждённые записи. Отправка в Telegram не входит в транзакцию Kafka: при сбое между доставкой и commit позиции возможен дубль.</p>
+        </details>
+      </section>
+      <section id="tasks-panel" class="work-panel" aria-labelledby="tasks-title" hidden>
+        <div class="panel-heading"><div><p class="eyebrow">~/today/tasks</p><h1 id="tasks-title">Задачи на сегодня</h1></div><button type="button" data-close-panel aria-label="Закрыть задачи">Закрыть ×</button></div>
+        <p class="muted">Один список в браузере и Telegram. День считается по Москве. Для доступа привяжи браузер к своему Telegram через кнопку ниже.</p>
+        <div class="toolbar"><span id="tasks-date" class="eyebrow"></span><button id="tasks-refresh" type="button">Обновить</button></div>
+        <form id="task-form" class="task-form"><label class="field-label" for="task-title">Что хочешь сделать?</label><div class="task-entry"><input id="task-title" type="text" maxlength="200" required autocomplete="off" placeholder="Например, разобрать GROUP BY"><button id="task-add" type="submit">Добавить +</button></div></form>
+        <p id="tasks-message" class="notice" role="status" aria-live="polite"></p>
+        <p id="tasks-progress" class="muted"></p><ul id="task-list" class="task-list"></ul>
+        <p class="muted">В боте: <code>/tasks</code> — список с кнопками выполнения; <code>/add Повторить SQL</code> — новая задача. Изменения из Telegram появляются при обновлении списка, также автоматически раз в 15 секунд, пока этот раздел открыт.</p>
+      </section>
+    </div>
     <div class="actions">
       <button id="next" type="button">Получить цитату <span aria-hidden="true">↵</span></button>
       <button id="admire" type="button" aria-pressed="false">Любоваться облаками</button>
       <button id="telegram" type="button">Привязать Telegram</button>
+      <button type="button" data-panel="practice-panel" aria-controls="practice-panel" aria-expanded="false">Тренироваться</button>
+      <button type="button" data-panel="map-panel" aria-controls="map-panel" aria-expanded="false">Карта</button>
+      <button type="button" data-panel="tasks-panel" aria-controls="tasks-panel" aria-expanded="false">Задачи</button>
       <div id="pairing" class="pairing" hidden>
         <img id="qr" alt="QR-код для привязки Telegram" width="200" height="200">
         <p>Отсканируйте QR-код и нажмите Start в боте.</p>
@@ -34,5 +92,6 @@
       </div>
     </div>
   </main>
+  <canvas id="fireworks" aria-hidden="true" hidden></canvas>
 </body>
 </html>

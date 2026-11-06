@@ -109,7 +109,7 @@ button.addEventListener('click', async () => {
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key === 'Enter' && !event.repeat && !button.disabled && !document.activeElement.closest('button, a, input, textarea, select')) {
+  if (event.key === 'Enter' && !event.repeat && !button.disabled && document.querySelector('#workspace').hidden && !document.activeElement.closest('button, a, input, textarea, select')) {
     event.preventDefault();
     button.click();
   }
